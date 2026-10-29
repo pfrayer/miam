@@ -169,9 +169,13 @@
   .leaflet-bar a { width: 40px !important; height: 40px !important; line-height: 40px !important;
                    background: var(--surface) !important; color: var(--text) !important; border-color: var(--line) !important; }
   .leaflet-bar a:hover { background: var(--raised) !important; }
-  .locate { display: grid; place-items: center; width: 40px; height: 40px; border: none; border-radius: 12px;
+  .locate, .map-btn { display: grid; place-items: center; width: 40px; height: 40px; border: none; border-radius: 12px;
             background: var(--surface); color: var(--text); box-shadow: var(--shadow); cursor: pointer; }
-  .locate:hover { color: var(--accent); }
+  .locate:hover, .map-btn:hover { color: var(--accent); }
+  /* Fullscreen map: the map element itself covers the viewport. */
+  body.map-full { overflow: hidden; }
+  /* !important: Leaflet sets position: relative inline on the map element. */
+  body.map-full #map { position: fixed !important; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; min-height: 0; border-radius: 0; }
   .cluster-toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px;
                     border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow);
                     font: 550 .85rem var(--font); cursor: pointer; user-select: none; }
@@ -229,6 +233,8 @@
 const ICON_PATHS = {
   external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
   route: '<path d="m3 11 19-9-9 19-2-8-8-2z"/>',
+  expand: '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"/>',
+  shrink: '<path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3"/>',
   locate: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
   search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
   x: '<path d="M18 6 6 18M6 6l12 12"/>',
@@ -457,6 +463,7 @@ function initMap() {
   state.layer = (clustered ? state.layers.clustered : state.layers.plain).addTo(state.map);
   addLocateControl();
   addClusterControl(clustered);
+  addFullscreenControl();
   for (const p of state.data.places) {
     const icon = L.divIcon({ className: "", html: `<div class="pin">${emojiOf(p)}</div>`,
       iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] });
@@ -493,6 +500,29 @@ function addClusterControl(checked) {
   L.DomEvent.disableClickPropagation(box);
   const Control = L.Control.extend({ onAdd: () => box });
   new Control({ position: "topleft" }).addTo(state.map);
+}
+
+// Fullscreen map on demand. Entering pushes a history entry so the phone's
+// back button (or Escape) leaves fullscreen instead of leaving the site.
+function addFullscreenControl() {
+  const btn = el("button", { className: "map-btn", type: "button" });
+  const set = full => {
+    document.body.classList.toggle("map-full", full);
+    btn.replaceChildren(svg(full ? "shrink" : "expand", 20));
+    btn.title = btn.ariaLabel = full ? "Quitter le plein écran" : "Carte en plein écran";
+    state.map.invalidateSize();
+  };
+  btn.onclick = e => {
+    e.stopPropagation();
+    if (document.body.classList.contains("map-full")) history.back();
+    else { history.pushState({ mapFull: true }, ""); set(true); }
+  };
+  addEventListener("popstate", () => { if (document.body.classList.contains("map-full")) set(false); });
+  addEventListener("keydown", e => { if (e.key === "Escape" && document.body.classList.contains("map-full")) history.back(); });
+  set(false);
+  L.DomEvent.disableClickPropagation(btn);
+  const Control = L.Control.extend({ onAdd: () => btn });
+  new Control({ position: "topright" }).addTo(state.map);
 }
 
 // Geolocation only works on HTTPS or localhost; asked on click, never on load.
