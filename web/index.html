@@ -1,0 +1,563 @@
+<!doctype html>
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#131211">
+<title>Restos à Lyon</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
+<script>try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch {}</script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/figtree@5.1.1/index.min.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/jetbrains-mono@5.1.1/index.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #131211; --surface: #1b1a18; --raised: #24221f; --line: #2e2c28;
+    --text: #f1ede6; --muted: #a29c92; --faint: #7a746b;
+    --accent: #f5b53d; --accent-ink: #1c1407; --accent-tint: rgba(245,181,61,.12);
+    --pin: #24221f; --pin-ring: rgba(255,255,255,.08);
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 6px 18px rgba(0,0,0,.35);
+    --shadow-lg: 0 2px 6px rgba(0,0,0,.45), 0 16px 40px rgba(0,0,0,.5);
+    --radius: 16px; --ease: cubic-bezier(.16, 1, .3, 1);
+    --font: "Figtree Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+    --mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --ok: #4ade80;
+  }
+  [data-theme="light"] {
+    color-scheme: light;
+    --bg: #faf6ee; --surface: #f2ecdf; --raised: #e9e1d1; --line: #e2d9c7;
+    --text: #1b1a17; --muted: #66615a; --faint: #8d877e;
+    --accent: #9a5b00; --accent-ink: #ffffff; --accent-tint: rgba(154,91,0,.09);
+    --pin: #fffdf8; --pin-ring: rgba(60,40,10,.08);
+    --shadow: 0 1px 2px rgba(27,26,23,.08), 0 6px 18px rgba(27,26,23,.10);
+    --shadow-lg: 0 2px 6px rgba(27,26,23,.10), 0 16px 40px rgba(27,26,23,.16);
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; font: 15px/1.5 var(--font); background: var(--bg); color: var(--text);
+         -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--accent); color: var(--accent-ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button, input { font: inherit; color: inherit; }
+  svg { display: block; }
+
+  /* Header */
+  .top { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; padding: 22px 16px 14px; }
+  .top .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between;
+               align-items: baseline; gap: 6px 12px; }
+  /* Sync status, styled like a terminal status line */
+  .sync { margin-left: auto; display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap;
+          font: 500 .75rem/1 var(--mono); color: var(--muted); letter-spacing: 0; }
+  .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
+                  align-self: center; }
+  .sync.stale { --ok: #f5b53d; }
+  .sync.dead { --ok: #f0605a; }
+  h1 { margin: 0; font-size: 1.6rem; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
+  h1 em { font-style: normal; font-weight: 800; color: var(--accent); }
+  .meta { margin-top: 6px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
+  .meta span { white-space: nowrap; }
+  .ghost { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line);
+           border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
+           transition: color .2s, border-color .2s; }
+  .ghost:hover { color: var(--text); border-color: var(--faint); }
+
+  /* Search + filters */
+  .tools { position: sticky; top: 0; z-index: 10; background: var(--bg); padding: 4px 0 12px; }
+  .search { position: relative; display: block; margin: 0 16px 12px; }
+  .search svg { position: absolute; left: 12px; top: 50%; translate: 0 -50%; color: var(--muted); pointer-events: none; }
+  .search input { display: block; width: 100%; height: 38px; padding: 0 36px 0 36px; border: none; border-radius: 10px;
+                  background: var(--surface); font-size: .9rem; outline: none; appearance: none;
+                  box-shadow: inset 0 0 0 1px transparent; transition: box-shadow .2s; }
+  .search input::placeholder { color: var(--muted); }
+  .search input:focus { box-shadow: inset 0 0 0 1px var(--accent); }
+  .search input::-webkit-search-cancel-button { display: none; }
+  .clear { position: absolute; right: 4px; top: 50%; translate: 0 -50%; display: grid; place-items: center;
+           width: 30px; height: 30px; border: none; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+  .clear:hover { color: var(--text); }
+  .clear[hidden] { display: none; }
+  .chips { display: flex; gap: 6px; overflow-x: auto; padding: 0 16px; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 13px;
+          border: 1px solid var(--line); border-radius: 999px; background: transparent; cursor: pointer;
+          font-size: .875rem; font-weight: 550; white-space: nowrap; color: var(--muted);
+          transition: background-color .2s, border-color .2s, color .2s; }
+  .chip:hover { color: var(--text); border-color: var(--faint); }
+  .chip[aria-pressed="true"] { background: var(--text); border-color: var(--text); color: var(--bg); }
+  .chip .n { opacity: .6; font-variant-numeric: tabular-nums; }
+  .chip-hidden { border-style: dashed; }
+  .follow-row { margin: 10px 16px 0; }
+  .follow-row:empty { display: none; }
+  .follow-btn { display: inline-flex; align-items: center; gap: 7px; color: var(--accent);
+                font-size: .9rem; font-weight: 600; text-decoration: none; }
+  .follow-btn:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+  /* Map */
+  .mobile-map { padding: 0 12px 4px; }
+  #map { height: 50svh; min-height: 300px; border-radius: var(--radius); overflow: hidden;
+         background: var(--surface); z-index: 0; }
+
+  /* List */
+  ul { list-style: none; margin: 0; padding: 8px 8px 32px; }
+  .place { display: flex; align-items: center; gap: 14px; padding: 10px 8px; border-radius: 14px; cursor: pointer;
+           transition: background-color .15s; }
+  .place:hover { background: var(--surface); }
+  .place.active { background: var(--accent-tint); }
+  .badge { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 12px;
+           background: var(--surface); font-size: 20px; line-height: 1; }
+  .place:hover .badge { background: var(--raised); }
+  .info { min-width: 0; flex: 1; }
+  .name { font-weight: 600; letter-spacing: -.005em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .place.active .name { color: var(--accent); }
+  .addr { color: var(--muted); font-size: .85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  mark { background: none; color: var(--accent); }
+  .go { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 50%;
+        color: var(--faint); opacity: 0; transition: opacity .15s, color .15s, background-color .15s; }
+  .place:hover .go, .place.active .go, .go:focus-visible { opacity: 1; }
+  .go:hover { color: var(--accent); background: var(--raised); }
+  @media (hover: none) { .go { opacity: 1; } }
+  .state { padding: 40px 16px; text-align: center; color: var(--muted); }
+  .state strong { display: block; color: var(--text); font-weight: 600; margin-bottom: 4px; }
+  .state button { margin-top: 14px; height: 38px; padding: 0 18px; border: 1px solid var(--line); border-radius: 999px;
+                  background: transparent; cursor: pointer; font-weight: 600; }
+  .skeleton .badge, .skeleton .bar { background: linear-gradient(90deg, var(--surface), var(--raised), var(--surface));
+           background-size: 200% 100%; animation: shimmer 1.4s linear infinite; }
+  .skeleton .bar { height: 11px; border-radius: 6px; margin: 7px 0; }
+  @keyframes shimmer { to { background-position: -200% 0; } }
+
+  /* Markers */
+  .pin { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--pin);
+         box-shadow: 0 0 0 1px var(--pin-ring), var(--shadow); font-size: 17px; line-height: 1;
+         transition: transform .4s var(--ease), box-shadow .4s var(--ease); }
+  .pin:hover { transform: scale(1.12); }
+  .pin.selected { transform: scale(1.3); box-shadow: 0 0 0 2px var(--accent), var(--shadow-lg); }
+  .leaflet-marker-icon:has(.pin.selected) { z-index: 1000 !important; }
+  .cluster { display: grid; place-items: center; width: 40px; height: 40px; border-radius: 50%;
+             background: var(--surface); color: var(--accent); font-weight: 700; font-size: .9rem;
+             font-variant-numeric: tabular-nums; box-shadow: 0 0 0 1.5px var(--accent), 0 0 0 6px var(--accent-tint), var(--shadow);
+             transition: transform .3s var(--ease); }
+  .cluster:hover { transform: scale(1.08); }
+
+  /* Popup */
+  .leaflet-popup-content-wrapper, .leaflet-popup-tip { background: var(--surface); color: var(--text); }
+  .leaflet-popup-content-wrapper { border-radius: var(--radius); box-shadow: var(--shadow-lg); padding: 0;
+                                   outline: 1px solid var(--line); }
+  .leaflet-popup-content { margin: 16px 16px 14px; font: 14px/1.45 var(--font); width: 244px !important; }
+  .leaflet-popup-tip { box-shadow: none; }
+  .leaflet-container a.leaflet-popup-close-button { top: 10px; right: 10px; width: 28px; height: 28px; border-radius: 50%;
+           color: var(--faint); font: 20px/26px var(--font); }
+  .leaflet-container a.leaflet-popup-close-button:hover { background: var(--raised); color: var(--text); }
+  .pop-name { font-size: 1.02rem; font-weight: 650; letter-spacing: -.01em; padding-right: 26px; }
+  .pop-cats { margin-top: 2px; color: var(--accent); font-size: .8rem; font-weight: 550; }
+  .leaflet-container a.pop-follow { display: inline-flex; align-items: center; gap: 5px; margin-top: 8px;
+           color: var(--muted); font-size: .8rem; font-weight: 600; text-decoration: none; }
+  .leaflet-container a.pop-follow:hover { color: var(--accent); }
+  .pop-addr { margin-top: 8px; color: var(--muted); }
+  .pop-actions { display: flex; gap: 8px; margin-top: 14px; }
+  .leaflet-container a.btn { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+         height: 38px; border-radius: 10px; font-weight: 600; font-size: .85rem; text-decoration: none;
+         transition: filter .15s, background-color .15s; }
+  .leaflet-container a.btn-primary { background: var(--accent); color: var(--accent-ink); }
+  .leaflet-container a.btn-primary:hover { filter: brightness(1.08); }
+  .leaflet-container a.btn-ghost { background: var(--raised); color: var(--text); }
+  .leaflet-container a.btn-ghost:hover { background: var(--line); }
+
+  /* Map controls */
+  .leaflet-container { font-family: var(--font); background: var(--surface); }
+  .leaflet-bar { border: none !important; box-shadow: var(--shadow) !important; border-radius: 12px !important; overflow: hidden; }
+  .leaflet-bar a { width: 40px !important; height: 40px !important; line-height: 40px !important;
+                   background: var(--surface) !important; color: var(--text) !important; border-color: var(--line) !important; }
+  .leaflet-bar a:hover { background: var(--raised) !important; }
+  .locate { display: grid; place-items: center; width: 40px; height: 40px; border: none; border-radius: 12px;
+            background: var(--surface); color: var(--text); box-shadow: var(--shadow); cursor: pointer; }
+  .locate:hover { color: var(--accent); }
+  .cluster-toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px;
+                    border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow);
+                    font: 550 .85rem var(--font); cursor: pointer; user-select: none; }
+  .cluster-toggle input { width: 16px; height: 16px; margin: 0; accent-color: var(--accent); cursor: pointer; }
+  .cluster-toggle:hover { color: var(--accent); }
+  .locate.on { color: #4c9bff; }
+  .locate.busy svg { animation: spin 1s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .me-dot { fill: #4c9bff; fill-opacity: 1; stroke: #fff; stroke-width: 3; }
+  .me-halo { fill: #4c9bff; fill-opacity: .14; stroke: #4c9bff; stroke-opacity: .35; stroke-width: 1; }
+  .leaflet-control-attribution { font-size: 10px; border-top-left-radius: 8px;
+           background: color-mix(in srgb, var(--surface) 80%, transparent) !important; color: var(--faint); }
+  .leaflet-control-attribution a { color: var(--muted); }
+  @media (max-width: 899px) { .leaflet-control-zoom { display: none; } }
+
+  /* Desktop: list panel left, full-height map right */
+  @media (min-width: 900px) {
+    body { display: grid; grid-template-columns: 420px 1fr; height: 100vh; overflow: hidden; }
+    .panel { display: flex; flex-direction: column; min-height: 0; border-right: 1px solid var(--line); }
+    .top { padding: 28px 24px 18px; }
+    .search { margin: 0 24px 12px; }
+    .chips { padding: 0 24px; flex-wrap: wrap; }
+    .follow-row { margin: 12px 24px 0; }
+    .scroll { flex: 1; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+    ul { padding: 8px 14px 32px; }
+    #map { height: 100vh; border-radius: 0; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<div class="panel">
+  <header class="top">
+    <h1>Restos à <em>Lyon</em></h1>
+    <button class="ghost" id="theme" type="button"></button>
+    <div class="meta" id="meta">Chargement…</div>
+  </header>
+  <div class="tools">
+    <label class="search">
+      <span id="search-icon"></span>
+      <input id="q" type="search" placeholder="Rechercher un resto, une rue…" autocomplete="off" aria-label="Rechercher">
+      <button class="clear" id="clear" type="button" aria-label="Effacer la recherche" hidden></button>
+    </label>
+    <nav class="chips" id="chips" aria-label="Catégories"></nav>
+    <div class="follow-row" id="follow-row"></div>
+  </div>
+  <div class="mobile-map"></div>
+  <div class="scroll"><ul id="list" aria-live="polite"></ul></div>
+</div>
+<div id="map-slot"><div id="map" role="region" aria-label="Carte des restos"></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.min.js"></script>
+<script>
+const ICON_PATHS = {
+  external: '<path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>',
+  route: '<path d="m3 11 19-9-9 19-2-8-8-2z"/>',
+  locate: '<circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/>',
+  search: '<circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/>',
+  x: '<path d="M18 6 6 18M6 6l12 12"/>',
+  bookmark: '<path d="M19 21l-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/><path d="M12 7v6M9 10h6"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>',
+  moon: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>',
+};
+function svg(name, size = 18) {
+  const s = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  for (const [k, v] of Object.entries({ width: size, height: size, viewBox: "0 0 24 24", fill: "none", stroke: "currentColor",
+    "stroke-width": 1.8, "stroke-linecap": "round", "stroke-linejoin": "round", "aria-hidden": "true" })) s.setAttribute(k, v);
+  s.innerHTML = ICON_PATHS[name];
+  return s;
+}
+function el(tag, props = {}, ...children) {
+  const e = Object.assign(document.createElement(tag), props);
+  e.append(...children);
+  return e;
+}
+
+const TILES = { dark: "alidade_smooth_dark", light: "osm_bright" };
+const desktop = matchMedia("(min-width: 900px)");
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+const state = { data: null, active: null, query: "", selected: null, markers: new Map(), map: null, layer: null, tiles: null };
+
+// Accent- and case-insensitive matching: "cafe" finds "Café".
+const fold = s => s.normalize("NFD").replace(/\p{M}/gu, "").toLowerCase();
+const categoryOf = id => state.data.categories.find(c => c.id === id);
+// Hidden categories ("À tester") stay out of "Tout", the map and the counts until selected.
+const shownByDefault = p => p.categories.some(id => !categoryOf(id)?.hidden);
+const emojiOf = p => (p.categories.map(categoryOf).find(c => c && !c.hidden) || categoryOf(p.categories[0]))?.emoji || "📍";
+// Lists are named "Lyon - Asiatique" in Google Maps; the city prefix is redundant here.
+const shortName = c => c.name.replace(/^\s*Lyon\s*[-–·:]\s*/i, "");
+const label = c => `${c.emoji} ${shortName(c)}`.trim();
+const inCategory = (p, id) => id ? p.categories.includes(id) : shownByDefault(p);
+const matches = p => !state.query || fold(`${p.name} ${p.address}`).includes(state.query);
+const visible = p => inCategory(p, state.active) && matches(p);
+const directionsUrl = p => "https://www.google.com/maps/dir/?api=1&destination=" + encodeURIComponent(`${p.name}, ${p.address}`);
+
+function highlighted(text) {
+  if (!state.query) return [text];
+  const i = fold(text).indexOf(state.query);
+  if (i < 0) return [text];
+  const j = i + state.query.length;
+  return [text.slice(0, i), el("mark", { textContent: text.slice(i, j) }), text.slice(j)];
+}
+
+// Theme: dark by default, remembered per browser.
+function theme() { return document.documentElement.dataset.theme; }
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#131211" : "#faf6ee";
+  const btn = document.getElementById("theme");
+  btn.replaceChildren(svg(t === "dark" ? "sun" : "moon"));
+  btn.ariaLabel = btn.title = t === "dark" ? "Passer en thème clair" : "Passer en thème sombre";
+  state.tiles?.setUrl(tileUrl());
+}
+function tileUrl() { return `https://tiles.stadiamaps.com/tiles/${TILES[theme()]}/{z}/{x}/{y}{r}.png`; }
+
+// On mobile the map sits between the filters and the list; on desktop it fills the right column.
+function placeMap() {
+  const host = desktop.matches ? document.getElementById("map-slot") : document.querySelector(".mobile-map");
+  const map = document.getElementById("map");
+  if (map.parentElement !== host) host.append(map);
+  state.map?.invalidateSize();
+}
+
+function renderChips() {
+  const all = [{ id: null, name: "Tout", emoji: "" }, ...state.data.categories];
+  document.getElementById("chips").replaceChildren(...all.map(c => {
+    const n = state.data.places.filter(p => inCategory(p, c.id) && matches(p)).length;
+    const b = el("button", { className: "chip" + (c.hidden ? " chip-hidden" : ""), type: "button" },
+      label(c), el("span", { className: "n", textContent: n }));
+    b.setAttribute("aria-pressed", String(state.active === c.id));
+    // Tapping the selected category again goes back to "Tout".
+    b.onclick = () => { state.active = state.active === c.id ? null : c.id; render(); };
+    return b;
+  }));
+  // Public lists can be followed ("Suivre") from the visitor's own Google Maps app.
+  const row = document.getElementById("follow-row");
+  const cat = state.active && categoryOf(state.active);
+  if (cat?.followUrl) {
+    row.replaceChildren(el("a", { className: "follow-btn", href: cat.followUrl, target: "_blank", rel: "noopener",
+      title: "Ouvre la liste dans Google Maps : clique sur « Suivre » pour la garder, elle restera à jour" },
+      svg("bookmark", 16), "Ajouter cette liste à mon Google Maps"));
+  } else {
+    row.replaceChildren();
+  }
+}
+
+function renderList() {
+  const places = state.data.places.filter(visible).sort((a, b) => a.name.localeCompare(b.name, "fr"));
+  const list = document.getElementById("list");
+  if (!places.length) {
+    const reset = el("button", { type: "button", textContent: "Tout afficher" });
+    reset.onclick = () => { state.active = null; setQuery(""); };
+    list.replaceChildren(el("li", { className: "state" },
+      el("strong", { textContent: state.query ? "Aucun resto ne correspond" : "Rien dans cette catégorie pour l'instant" }),
+      state.query ? "Essaie un autre nom ou une autre rue." : "", el("br"), reset));
+    return;
+  }
+  list.replaceChildren(...places.map(p => {
+    const go = el("a", { className: "go", href: p.mapsUrl, target: "_blank", rel: "noopener",
+      title: "Ouvrir dans Google Maps", ariaLabel: `Ouvrir ${p.name} dans Google Maps` }, svg("external", 17));
+    go.onclick = e => e.stopPropagation();
+    const li = el("li", { className: "place", tabIndex: 0 },
+      el("span", { className: "badge", textContent: emojiOf(p) }),
+      el("div", { className: "info" },
+        el("div", { className: "name" }, ...highlighted(p.name)),
+        el("div", { className: "addr" }, ...highlighted(p.address))),
+      go);
+    li.dataset.id = p.featureId;
+    if (state.selected === p.featureId) li.classList.add("active");
+    li.onclick = () => focusPlace(p, true);
+    li.onkeydown = e => { if (e.target === li && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); focusPlace(p, true); } };
+    return li;
+  }));
+}
+
+function renderSkeleton() {
+  document.getElementById("list").replaceChildren(...Array.from({ length: 6 }, () =>
+    el("li", { className: "place skeleton", ariaHidden: "true" }, el("span", { className: "badge" }),
+      el("div", { className: "info" }, el("div", { className: "bar", style: "width:50%" }),
+        el("div", { className: "bar", style: "width:75%" })))));
+}
+
+function renderError() {
+  document.getElementById("meta").textContent = "";
+  const retry = el("button", { type: "button", textContent: "Réessayer" });
+  retry.onclick = load;
+  document.getElementById("list").replaceChildren(el("li", { className: "state" },
+    el("strong", { textContent: "Impossible de charger les restos" }), "Vérifie ta connexion puis réessaie.", el("br"), retry));
+}
+
+function render() {
+  const synced = state.data.syncedAt && !state.data.syncedAt.startsWith("0001") ? new Date(state.data.syncedAt) : null;
+  document.getElementById("meta").replaceChildren(
+    el("span", { textContent: `${state.data.places.filter(shownByDefault).length} adresses testées et approuvées` }),
+    ...(synced ? [syncStatus(synced)] : []));
+  renderChips();
+  renderList();
+  if (state.map) {
+    state.layer.clearLayers();
+    for (const p of state.data.places.filter(visible)) state.layer.addLayer(state.markers.get(p.featureId));
+  }
+}
+
+// Green while syncs succeed (hourly); amber after 3h without one, red after a day.
+function syncStatus(synced) {
+  const hours = (Date.now() - synced) / 36e5;
+  const s = el("span", { className: "sync" + (hours > 24 ? " dead" : hours > 3 ? " stale" : ""),
+    title: `Dernière synchro : ${synced.toLocaleString("fr-FR")}` },
+    `à jour le ${synced.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`);
+  return s;
+}
+
+function setQuery(q) {
+  const input = document.getElementById("q");
+  if (input.value !== q) input.value = q;
+  state.query = fold(q.trim());
+  document.getElementById("clear").hidden = !q;
+  render();
+}
+
+function popupFollow(p) {
+  const cat = p.categories.map(categoryOf).find(c => c?.followUrl);
+  if (!cat) return [];
+  return [el("a", { className: "pop-follow", href: cat.followUrl, target: "_blank", rel: "noopener",
+    title: "Ouvre la liste dans Google Maps : clique sur « Suivre » pour la garder" },
+    svg("bookmark", 14), "Ajouter la liste à mon Maps")];
+}
+
+function popupFor(p) {
+  return el("div", {},
+    el("div", { className: "pop-name", textContent: p.name }),
+    el("div", { className: "pop-cats", textContent: p.categories.map(categoryOf).filter(Boolean).map(label).join(" · ") }),
+    el("div", { className: "pop-addr", textContent: p.address }),
+    ...popupFollow(p),
+    el("div", { className: "pop-actions" },
+      el("a", { className: "btn btn-primary", href: p.mapsUrl, target: "_blank", rel: "noopener" }, svg("external", 15), "Avis Google"),
+      el("a", { className: "btn btn-ghost", href: directionsUrl(p), target: "_blank", rel: "noopener" }, svg("route", 15), "Itinéraire")));
+}
+
+function select(p) {
+  if (state.selected) state.markers.get(state.selected)?.getElement()?.firstChild?.classList.remove("selected");
+  document.querySelectorAll(".place.active").forEach(li => li.classList.remove("active"));
+  state.selected = p?.featureId ?? null;
+  if (!p) return null;
+  state.markers.get(p.featureId)?.getElement()?.firstChild?.classList.add("selected");
+  const li = document.querySelector(`.place[data-id="${CSS.escape(p.featureId)}"]`);
+  li?.classList.add("active");
+  return li;
+}
+
+function focusPlace(p, fromList) {
+  select(p);
+  if (!state.map) return;
+  if (fromList && !desktop.matches) {
+    document.getElementById("map").scrollIntoView({ behavior: reduceMotion ? "auto" : "smooth", block: "center" });
+  }
+  const zoom = Math.max(state.map.getZoom(), 16);
+  const m = state.markers.get(p.featureId);
+  // A marker still inside a cluster after the flight gets zoomed into view first.
+  state.map.once("moveend", () => state.layer.zoomToShowLayer ? state.layer.zoomToShowLayer(m, () => m.openPopup()) : m.openPopup());
+  if (reduceMotion) state.map.setView([p.lat, p.lng], zoom);
+  else state.map.flyTo([p.lat, p.lng], zoom, { duration: .6 });
+}
+
+function initMap() {
+  state.map = L.map("map", { zoomControl: false }).setView([45.7578, 4.8320], 13);
+  state.map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  L.control.zoom({ position: "bottomright" }).addTo(state.map);
+  // Stadia Maps authorizes by domain (localhost works out of the box), no key needed.
+  state.tiles = L.tileLayer(tileUrl(), {
+    maxZoom: 20,
+    attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+  }).addTo(state.map);
+  state.layers = {
+    plain: L.layerGroup(),
+    clustered: L.markerClusterGroup({
+      maxClusterRadius: 44, disableClusteringAtZoom: 17, showCoverageOnHover: false, spiderfyOnMaxZoom: false,
+      iconCreateFunction: c => L.divIcon({ className: "", html: `<div class="cluster">${c.getChildCount()}</div>`,
+        iconSize: [40, 40], iconAnchor: [20, 20] }),
+    }),
+  };
+  let clustered = false;
+  try { clustered = localStorage.getItem("cluster") === "1"; } catch {}
+  state.layer = (clustered ? state.layers.clustered : state.layers.plain).addTo(state.map);
+  addLocateControl();
+  addClusterControl(clustered);
+  for (const p of state.data.places) {
+    const icon = L.divIcon({ className: "", html: `<div class="pin">${emojiOf(p)}</div>`,
+      iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] });
+    const m = L.marker([p.lat, p.lng], { icon, title: p.name, riseOnHover: true })
+      .bindPopup(() => popupFor(p), { autoPanPadding: [24, 24] });
+    // Leaflet opens the popup itself. Only the desktop list scrolls on its own: on mobile,
+    // scrolling to the row would scroll the whole page and push the map (and popup) away.
+    m.on("click", () => {
+      const li = select(p);
+      if (desktop.matches) li?.scrollIntoView({ block: "nearest", behavior: reduceMotion ? "auto" : "smooth" });
+    });
+    // The pin element only exists once out of its cluster: (re)apply the selected look on open.
+    m.on("popupopen", () => { if (state.selected === p.featureId) m.getElement()?.firstChild?.classList.add("selected"); });
+    m.on("popupclose", () => { if (state.selected === p.featureId) select(null); });
+    state.markers.set(p.featureId, m);
+  }
+  render();
+  const shown = state.data.places.filter(shownByDefault);
+  if (shown.length) state.map.fitBounds(shown.map(p => [p.lat, p.lng]), { padding: [32, 32] });
+}
+
+// Markers are shown one by one by default; grouping is opt-in and remembered per browser.
+function addClusterControl(checked) {
+  const input = el("input", { type: "checkbox", checked });
+  input.onchange = () => {
+    try { localStorage.setItem("cluster", input.checked ? "1" : "0"); } catch {}
+    state.map.closePopup();
+    state.layer.clearLayers();
+    state.map.removeLayer(state.layer);
+    state.layer = (input.checked ? state.layers.clustered : state.layers.plain).addTo(state.map);
+    render();
+  };
+  const box = el("label", { className: "cluster-toggle" }, input, "Regrouper");
+  L.DomEvent.disableClickPropagation(box);
+  const Control = L.Control.extend({ onAdd: () => box });
+  new Control({ position: "topleft" }).addTo(state.map);
+}
+
+// Geolocation only works on HTTPS or localhost; asked on click, never on load.
+function addLocateControl() {
+  if (!("geolocation" in navigator)) return;
+  let me = null, centered = false;
+  const btn = el("button", { className: "locate", type: "button", title: "Me localiser", ariaLabel: "Me localiser" }, svg("locate", 20));
+  btn.onclick = e => {
+    e.stopPropagation();
+    if (me) { state.map.flyTo(me.dot.getLatLng(), Math.max(state.map.getZoom(), 15), { duration: .6 }); return; }
+    btn.classList.add("busy");
+    state.map.locate({ watch: true, enableHighAccuracy: true });
+  };
+  state.map.on("locationfound", e => {
+    btn.classList.remove("busy");
+    btn.classList.add("on");
+    if (!me) {
+      me = { halo: L.circle(e.latlng, { radius: e.accuracy, className: "me-halo", interactive: false }).addTo(state.map),
+             dot: L.circleMarker(e.latlng, { radius: 7, className: "me-dot", interactive: false }).addTo(state.map) };
+    }
+    me.halo.setLatLng(e.latlng).setRadius(e.accuracy);
+    me.dot.setLatLng(e.latlng);
+    if (!centered) { centered = true; state.map.flyTo(e.latlng, Math.max(state.map.getZoom(), 15), { duration: .6 }); }
+  });
+  state.map.on("locationerror", e => {
+    btn.classList.remove("busy");
+    state.map.stopLocate();
+    alert(e.code === 1 ? "Localisation refusée : autorise-la dans les réglages du navigateur."
+                       : "Impossible de te localiser pour le moment.");
+  });
+  const Control = L.Control.extend({ onAdd: () => btn });
+  new Control({ position: "topright" }).addTo(state.map);
+}
+
+async function load() {
+  renderSkeleton();
+  document.getElementById("meta").textContent = "Chargement…";
+  try {
+    const r = await fetch("/api/places");
+    if (!r.ok) throw new Error(r.status);
+    state.data = await r.json();
+  } catch {
+    renderError();
+    return;
+  }
+  render();
+  if (window.L && !state.map) initMap();
+}
+
+document.getElementById("search-icon").replaceWith(svg("search", 16));
+document.getElementById("clear").append(svg("x", 16));
+document.getElementById("q").addEventListener("input", e => setQuery(e.target.value));
+document.getElementById("q").addEventListener("keydown", e => { if (e.key === "Escape") setQuery(""); });
+document.getElementById("clear").onclick = () => { setQuery(""); document.getElementById("q").focus(); };
+document.getElementById("theme").onclick = () => {
+  const next = theme() === "dark" ? "light" : "dark";
+  try { localStorage.setItem("theme", next); } catch {}
+  applyTheme(next);
+};
+applyTheme(theme());
+placeMap();
+desktop.addEventListener("change", placeMap);
+load();
+</script>
+</body>
+</html>

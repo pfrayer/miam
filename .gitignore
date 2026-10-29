@@ -1,0 +1,6 @@
+data/
+*.tmp
+.claude/
+.opencode/
+config/config.json
+.impeccable/

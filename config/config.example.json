@@ -1,0 +1,8 @@
+{
+  "lists": [
+    { "url": "https://maps.app.goo.gl/REPLACE_WITH_A_SHARED_LIST", "public": true },
+    "https://maps.app.goo.gl/REPLACE_WITH_A_PRIVATE_LIST",
+    { "url": "https://maps.app.goo.gl/REPLACE_WITH_A_TO_TRY_LIST", "hidden": true }
+  ],
+  "syncInterval": "1h"
+}
