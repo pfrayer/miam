@@ -365,9 +365,7 @@ function renderError() {
 
 function render() {
   const synced = state.data.syncedAt && !state.data.syncedAt.startsWith("0001") ? new Date(state.data.syncedAt) : null;
-  document.getElementById("meta").replaceChildren(
-    el("span", { textContent: `${state.data.places.filter(shownByDefault).length} adresses testées et approuvées` }),
-    ...(synced ? [syncStatus(synced)] : []));
+  document.getElementById("meta").replaceChildren(...(synced ? [syncStatus(synced)] : []));
   renderChips();
   renderList();
   if (state.map) {
