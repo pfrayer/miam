@@ -96,3 +96,7 @@ go test ./...
 ```
 
 The front end is a single file, [`web/index.html`](web/index.html), embedded into the binary: vanilla JS, [Leaflet](https://leafletjs.com/) and [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) from a CDN, no build step.
+
+## License
+
+[MIT](LICENSE)
