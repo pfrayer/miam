@@ -162,6 +162,18 @@
   body.map-full { overflow: hidden; }
   /* !important: Leaflet sets position: relative inline on the map element. */
   body.map-full #map { position: fixed !important; inset: 0; z-index: 1000; width: 100vw; height: 100dvh; min-height: 0; border-radius: 0; }
+  /* In fullscreen the category chips float over the top of the map; map controls move below them. */
+  body.map-full .tools { position: fixed; top: 0; left: 0; right: 0; z-index: 1100; background: none;
+                         padding: calc(12px + env(safe-area-inset-top)) 0 0; pointer-events: none; }
+  body.map-full .search, body.map-full .follow-row { display: none; }
+  body.map-full .chips { flex-wrap: nowrap; padding: 0 12px; pointer-events: auto; }
+  body.map-full .chip:not([aria-pressed="true"]) { background: var(--surface); border-color: transparent; color: var(--text); box-shadow: var(--shadow); }
+  body.map-full .leaflet-top { top: calc(46px + env(safe-area-inset-top)); }
+  @media (min-width: 900px) {
+    /* No horizontal swipe with a mouse: let the chips wrap instead. */
+    body.map-full .chips { flex-wrap: wrap; }
+    body.map-full .leaflet-top { top: 92px; }
+  }
   .cluster-toggle { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 14px 0 12px;
                     border-radius: 12px; background: var(--surface); color: var(--text); box-shadow: var(--shadow);
                     font: 550 .85rem var(--font); cursor: pointer; user-select: none; }
