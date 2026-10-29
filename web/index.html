@@ -414,6 +414,23 @@ function focusPlace(p, fromList) {
   else state.map.flyTo([p.lat, p.lng], zoom, { duration: .6 });
 }
 
+// Smaller pins when zoomed out, so a whole-city view is not one overlapping blob.
+const pinSize = zoom => zoom <= 13 ? 22 : zoom === 14 ? 28 : 34;
+
+function pinIcon(p, size) {
+  return L.divIcon({ className: "",
+    html: `<div class="pin" style="width:${size}px;height:${size}px;font-size:${Math.round(size / 2)}px">${emojiOf(p)}</div>`,
+    iconSize: [size, size], iconAnchor: [size / 2, size / 2], popupAnchor: [0, -size / 2 - 1] });
+}
+
+function resizePins() {
+  const size = pinSize(state.map.getZoom());
+  if (size === state.pinSize) return;
+  state.pinSize = size;
+  for (const p of state.data.places) state.markers.get(p.featureId).setIcon(pinIcon(p, size));
+  if (state.selected) state.markers.get(state.selected)?.getElement()?.firstChild?.classList.add("selected");
+}
+
 function initMap() {
   state.map = L.map("map", { zoomControl: false }).setView([45.7578, 4.8320], 13);
   state.map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
@@ -437,10 +454,9 @@ function initMap() {
   addLocateControl();
   addClusterControl(clustered);
   addFullscreenControl();
+  state.pinSize = pinSize(state.map.getZoom());
   for (const p of state.data.places) {
-    const icon = L.divIcon({ className: "", html: `<div class="pin">${emojiOf(p)}</div>`,
-      iconSize: [34, 34], iconAnchor: [17, 17], popupAnchor: [0, -18] });
-    const m = L.marker([p.lat, p.lng], { icon, title: p.name, riseOnHover: true })
+    const m = L.marker([p.lat, p.lng], { icon: pinIcon(p, state.pinSize), title: p.name, riseOnHover: true })
       .bindPopup(() => popupFor(p), { autoPanPadding: [24, 24] });
     // Leaflet opens the popup itself. Only the desktop list scrolls on its own: on mobile,
     // scrolling to the row would scroll the whole page and push the map (and popup) away.
@@ -453,6 +469,7 @@ function initMap() {
     m.on("popupclose", () => { if (state.selected === p.featureId) select(null); });
     state.markers.set(p.featureId, m);
   }
+  state.map.on("zoomend", resizePins);
   render();
   const shown = state.data.places.filter(shownByDefault);
   if (shown.length) state.map.fitBounds(shown.map(p => [p.lat, p.lng]), { padding: [32, 32] });
