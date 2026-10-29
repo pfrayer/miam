@@ -20,8 +20,8 @@ You already save your favourite places in Google Maps. miam reads those lists an
 - **Locate me**, Google reviews and directions links on every place.
 - **"Add this list to my Google Maps"** for the lists you mark as public: visitors follow them in their own app.
 - **Hidden lists**, e.g. a "to try" list kept out of the default view.
-- Dark and light themes, optional marker grouping, works well on phones.
-- **Resilient:** a failed sync never empties the site; the last good snapshot is kept, and a status dot turns amber or red when syncs stop.
+- Dark and light themes, optional marker grouping, fullscreen map, works well on phones.
+- **Resilient:** a failed sync never empties the site; the last good snapshot is kept and the error is logged.
 - **Small:** one Go binary, no database, a ~6 MB Docker image, a single HTML page.
 
 ## How it works

@@ -8,7 +8,6 @@
 <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🍽️</text></svg>">
 <script>try { if (localStorage.getItem("theme") === "light") document.documentElement.dataset.theme = "light"; } catch {}</script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/figtree@5.1.1/index.min.css">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fontsource-variable/jetbrains-mono@5.1.1/index.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.min.css">
 <style>
@@ -22,8 +21,6 @@
     --shadow-lg: 0 2px 6px rgba(0,0,0,.45), 0 16px 40px rgba(0,0,0,.5);
     --radius: 16px; --ease: cubic-bezier(.16, 1, .3, 1);
     --font: "Figtree Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
-    --mono: "JetBrains Mono Variable", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    --ok: #4ade80;
   }
   [data-theme="light"] {
     color-scheme: light;
@@ -45,19 +42,8 @@
 
   /* Header */
   .top { display: grid; grid-template-columns: 1fr auto; align-items: center; column-gap: 12px; padding: 22px 16px 14px; }
-  .top .meta { grid-column: 1 / -1; display: flex; flex-wrap: wrap; justify-content: space-between;
-               align-items: baseline; gap: 6px 12px; }
-  /* Sync status, styled like a terminal status line */
-  .sync { margin-left: auto; display: inline-flex; align-items: baseline; gap: 7px; white-space: nowrap;
-          font: 500 .75rem/1 var(--mono); color: var(--muted); letter-spacing: 0; }
-  .sync::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--ok);
-                  align-self: center; }
-  .sync.stale { --ok: #f5b53d; }
-  .sync.dead { --ok: #f0605a; }
   h1 { margin: 0; font-size: 1.6rem; line-height: 1.1; font-weight: 700; letter-spacing: -.025em; }
   h1 em { font-style: normal; font-weight: 800; color: var(--accent); }
-  .meta { margin-top: 6px; color: var(--muted); font-size: .85rem; font-variant-numeric: tabular-nums; }
-  .meta span { white-space: nowrap; }
   .ghost { flex: none; display: grid; place-items: center; width: 40px; height: 40px; border: 1px solid var(--line);
            border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer;
            transition: color .2s, border-color .2s; }
@@ -211,7 +197,6 @@
   <header class="top">
     <h1>Restos à <em>Lyon</em></h1>
     <button class="ghost" id="theme" type="button"></button>
-    <div class="meta" id="meta">Chargement…</div>
   </header>
   <div class="tools">
     <label class="search">
@@ -362,7 +347,6 @@ function renderSkeleton() {
 }
 
 function renderError() {
-  document.getElementById("meta").textContent = "";
   const retry = el("button", { type: "button", textContent: "Réessayer" });
   retry.onclick = load;
   document.getElementById("list").replaceChildren(el("li", { className: "state" },
@@ -370,23 +354,12 @@ function renderError() {
 }
 
 function render() {
-  const synced = state.data.syncedAt && !state.data.syncedAt.startsWith("0001") ? new Date(state.data.syncedAt) : null;
-  document.getElementById("meta").replaceChildren(...(synced ? [syncStatus(synced)] : []));
   renderChips();
   renderList();
   if (state.map) {
     state.layer.clearLayers();
     for (const p of state.data.places.filter(visible)) state.layer.addLayer(state.markers.get(p.featureId));
   }
-}
-
-// Green while syncs succeed (hourly); amber after 3h without one, red after a day.
-function syncStatus(synced) {
-  const hours = (Date.now() - synced) / 36e5;
-  const s = el("span", { className: "sync" + (hours > 24 ? " dead" : hours > 3 ? " stale" : ""),
-    title: `Dernière synchro : ${synced.toLocaleString("fr-FR")}` },
-    `à jour le ${synced.toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}`);
-  return s;
 }
 
 function setQuery(q) {
@@ -559,7 +532,6 @@ function addLocateControl() {
 
 async function load() {
   renderSkeleton();
-  document.getElementById("meta").textContent = "Chargement…";
   try {
     const r = await fetch("/api/places");
     if (!r.ok) throw new Error(r.status);
