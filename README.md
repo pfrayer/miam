@@ -95,6 +95,8 @@ Then open http://localhost:8080. In production, put it behind a TLS reverse prox
 go test ./...
 ```
 
+CI (`.github/workflows/ci.yml`) runs `go vet`, `go test` and a Docker build on every pull request and on `main`. Dependencies are kept up to date by Renovate.
+
 The front end is a single file, [`web/index.html`](web/index.html), embedded into the binary: vanilla JS, [Leaflet](https://leafletjs.com/) and [Leaflet.markercluster](https://github.com/Leaflet/Leaflet.markercluster) from a CDN, no build step.
 
 ## License
