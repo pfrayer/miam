@@ -443,8 +443,15 @@ function resizePins() {
   if (state.selected) state.markers.get(state.selected)?.getElement()?.firstChild?.classList.add("selected");
 }
 
+// Central Lyon, wide enough for every listed place: panning stops at its edges, and zooming
+// out stops once it all fits, so nobody burns Stadia tile credits on the rest of the world.
+const LYON = L.latLngBounds([45.66, 4.77], [45.81, 4.905]);
+
 function initMap() {
-  state.map = L.map("map", { zoomControl: false }).setView([45.7578, 4.8320], 13);
+  state.map = L.map("map", { zoomControl: false, maxBounds: LYON, maxBoundsViscosity: 1 }).setView([45.7578, 4.8320], 13);
+  const fitMinZoom = () => state.map.setMinZoom(state.map.getBoundsZoom(LYON));
+  fitMinZoom();
+  state.map.on("resize", fitMinZoom);
   state.map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
   L.control.zoom({ position: "bottomright" }).addTo(state.map);
   // Stadia Maps authorizes by domain (localhost works out of the box), no key needed.
