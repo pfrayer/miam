@@ -456,7 +456,8 @@ function initMap() {
   L.control.zoom({ position: "bottomright" }).addTo(state.map);
   // Stadia Maps authorizes by domain (localhost works out of the box), no key needed.
   state.tiles = L.tileLayer(tileUrl(), {
-    maxZoom: 20,
+    // Street level is enough to tell neighbouring places apart (clusters split at 17).
+    maxZoom: 18,
     attribution: '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   }).addTo(state.map);
   state.layers = {
