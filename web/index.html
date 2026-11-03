@@ -452,7 +452,7 @@ function initMap() {
   const fitMinZoom = () => state.map.setMinZoom(state.map.getBoundsZoom(LYON));
   fitMinZoom();
   state.map.on("resize", fitMinZoom);
-  state.map.attributionControl.setPrefix('<a href="https://leafletjs.com">Leaflet</a>');
+  state.map.attributionControl.setPrefix('<a href="https://github.com/pfrayer/miam">Code source</a> | <a href="https://leafletjs.com">Leaflet</a>');
   L.control.zoom({ position: "bottomright" }).addTo(state.map);
   // Stadia Maps authorizes by domain (localhost works out of the box), no key needed.
   state.tiles = L.tileLayer(tileUrl(), {

@@ -17,6 +17,9 @@ go run ./cmd/miam -config config/config.json -data data/snapshot.json   # http:/
 CI (`.github/workflows/ci.yml`) runs `go vet`, `go test` and `docker build` on
 every PR and on `main`. Renovate keeps the Go image and the actions up to date.
 
+The README is for visitors and stays non-technical; how to run your own miam
+(config, Docker, deployment) lives in `docs/SETUP.md`.
+
 ## Layout
 
 - `cmd/miam/main.go`: config loading (`config/config.json`, see
