@@ -1,6 +1,6 @@
 data/
 *.tmp
-.claude/
+.claude/settings.local.json
 .opencode/
 config/config.json
 .impeccable/
