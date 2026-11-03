@@ -3,4 +3,7 @@ data/
 .claude/settings.local.json
 .opencode/
 config/config.json
+# impeccable design skill: installed and updated by its own tool, per machine
 .impeccable/
+.claude/skills/impeccable/
+.claude/agents/impeccable-*.md
