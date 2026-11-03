@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go vet *)",
+      "Bash(go test *)",
+      "Bash(gofmt -l *)",
+      "Bash(go build *)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/go-check.sh",
+            "timeout": 120,
+            "statusMessage": "gofmt, go vet, go test..."
+          }
+        ]
+      }
+    ]
+  }
+}
