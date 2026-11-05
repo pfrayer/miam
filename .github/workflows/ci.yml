@@ -31,3 +31,29 @@ jobs:
 
     - name: Build Docker image
       run: docker build --tag miam:ci .
+
+  # A red main, or a red Renovate PR (its automerge would stall silently):
+  # push to ntfy.pateenchroot.ovh, topic deploy (secret NTFY_TOKEN, the same
+  # publisher token as pfrayer/pateenchroot). Best effort: never fails the run.
+  notify-failure:
+    needs: test
+    if: >-
+      failure()
+      && ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request')
+          || (github.event_name == 'pull_request' && startsWith(github.head_ref, 'renovate/')))
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Notify
+      env:
+        NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
+        # through env, never inline: titles and messages are free text
+        WHAT: ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title) || format('main {0}: {1}', github.sha, github.event.head_commit.message) }}
+        PRIORITY: ${{ github.event_name == 'pull_request' && 3 || 4 }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+      run: |
+        jq -n --arg title "CI failed: ${GITHUB_REPOSITORY#*/}" --arg message "${WHAT%%$'\n'*}"$'\n'"$RUN_URL" \
+          --argjson priority "$PRIORITY" '{topic: "deploy", $title, $message, $priority}' \
+          | curl -fsS --max-time 15 -o /dev/null -H "Authorization: Bearer $NTFY_TOKEN" \
+              -H 'Content-Type: application/json' --data-binary @- https://ntfy.pateenchroot.ovh \
+          || echo "::warning::notification not sent"
