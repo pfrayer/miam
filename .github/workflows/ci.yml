@@ -47,13 +47,20 @@ jobs:
     - name: Notify
       env:
         NTFY_TOKEN: ${{ secrets.NTFY_TOKEN }}
-        # through env, never inline: titles and messages are free text
-        WHAT: ${{ github.event_name == 'pull_request' && format('PR #{0}: {1}', github.event.pull_request.number, github.event.pull_request.title) || format('main {0}: {1}', github.sha, github.event.head_commit.message) }}
-        PRIORITY: ${{ github.event_name == 'pull_request' && 3 || 4 }}
+        # through env, never inline: a commit message or PR title is free text
+        COMMIT_MESSAGE: ${{ github.event.head_commit.message }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_TITLE: ${{ github.event.pull_request.title }}
         RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
       run: |
-        jq -n --arg title "CI failed: ${GITHUB_REPOSITORY#*/}" --arg message "${WHAT%%$'\n'*}"$'\n'"$RUN_URL" \
-          --argjson priority "$PRIORITY" '{topic: "deploy", $title, $message, $priority}' \
+        if [[ -n "$PR_NUMBER" ]]; then
+          title="CI failed: ${GITHUB_REPOSITORY#*/} PR #${PR_NUMBER}" priority=3 what=$PR_TITLE
+        else
+          title="CI failed: ${GITHUB_REPOSITORY#*/} main ${GITHUB_SHA:0:7}" priority=4
+          what=${COMMIT_MESSAGE%%$'\n'*}
+        fi
+        jq -n --arg title "$title" --arg message "${what:-manual run}"$'\n'"$RUN_URL" \
+          --argjson priority "$priority" '{topic: "deploy", $title, $message, $priority}' \
           | curl -fsS --max-time 15 -o /dev/null -H "Authorization: Bearer $NTFY_TOKEN" \
               -H 'Content-Type: application/json' --data-binary @- https://ntfy.pateenchroot.ovh \
           || echo "::warning::notification not sent"
