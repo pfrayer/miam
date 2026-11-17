@@ -15,7 +15,7 @@ go run ./cmd/miam -config config/config.json -data data/snapshot.json   # http:/
 ```
 
 CI (`.github/workflows/ci.yml`) runs `go vet`, `go test` and `docker build` on
-every PR and on `main`. Renovate keeps the Go image and the actions up to date.
+every PR and on `main`. Renovate keeps the Go image and the actions up to date, early on Mondays (Paris time), in grouped PRs (`go` bumps the image and the `go.mod` toolchain together), since each merge ends up as a deploy.
 
 The README is for visitors and stays non-technical; how to run your own miam
 (config, Docker, deployment) lives in `docs/SETUP.md`.

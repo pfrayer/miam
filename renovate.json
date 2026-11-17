@@ -2,6 +2,25 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": [
     "config:recommended",
-    "helpers:pinGitHubActionDigests"
+    "helpers:pinGitHubActionDigests",
+    "schedule:earlyMondays"
+  ],
+  "timezone": "Europe/Paris",
+  "packageRules": [
+    {
+      "description": "The image (Dockerfile) and CI (go.mod via setup-go) must build with the same Go: bump them together",
+      "matchDepNames": [
+        "go",
+        "golang"
+      ],
+      "groupName": "go"
+    },
+    {
+      "description": "Every merge ends up deployed (pateenchroot bumps the submodule): bring action updates in one PR",
+      "matchManagers": [
+        "github-actions"
+      ],
+      "groupName": "GitHub Actions"
+    }
   ]
 }
