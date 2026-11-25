@@ -32,11 +32,31 @@ jobs:
     - name: Build Docker image
       run: docker build --tag miam:ci .
 
+  # A green main goes live: pfrayer/pateenchroot bumps its miam pointer
+  # (sync-submodules.yml), tests the whole stack and deploys. Secret
+  # PATEENCHROOT_DISPATCH_TOKEN: fine-grained token, pfrayer/pateenchroot
+  # only, Actions read/write (starts a workflow, cannot push code).
+  deploy:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Dispatch the submodule sync in pfrayer/pateenchroot
+      env:
+        GH_TOKEN: ${{ secrets.PATEENCHROOT_DISPATCH_TOKEN }}
+      run: |
+        if [[ -z "$GH_TOKEN" ]]; then
+          echo "::error::secret PATEENCHROOT_DISPATCH_TOKEN is not set"
+          exit 1
+        fi
+        gh workflow run sync-submodules.yml --repo pfrayer/pateenchroot --ref master
+
   # A red main, or a red Renovate PR (its automerge would stall silently):
   # push to ntfy.pateenchroot.ovh, topic deploy (secret NTFY_TOKEN, the same
   # publisher token as pfrayer/pateenchroot). Best effort: never fails the run.
   notify-failure:
-    needs: test
+    needs: [test, deploy]
     if: >-
       failure()
       && ((github.ref == 'refs/heads/main' && github.event_name != 'pull_request')

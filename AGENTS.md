@@ -47,8 +47,9 @@ The README is for visitors and stays non-technical; how to run your own miam
   private share links and is gitignored. Captured Google responses must be
   anonymized before they are committed (names, avatar, account IDs, notes,
   list IDs).
-- **Production** runs from the `pfrayer/pateenchroot` repo (submodule, bumped
-  by Renovate there): container `read_only`, no capabilities, non-root user
+- **Production** runs from the `pfrayer/pateenchroot` repo (submodule; a green
+  `main` here dispatches its `sync-submodules.yml`, which bumps the pointer and
+  deploys within minutes): container `read_only`, no capabilities, non-root user
   65534, only `/data` writable, config mounted at `/config/config.json`. Do not
   write anywhere else at runtime.
 - **CSP lives in pateenchroot** (`nginx/sites-available/miam.pateenchroot.ovh.conf`)
